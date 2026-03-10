@@ -175,18 +175,16 @@
       opacity: 0.45,
       depthWrite: false
     });
+    const rayCoreMaterial = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.18,
+      depthWrite: false
+    });
     const rays = new THREE.LineSegments(rayGeometry, rayMaterial);
     rayGroup.add(rays);
 
-    const rayCore = new THREE.LineSegments(
-      rayGeometry,
-      new THREE.LineBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.18,
-        depthWrite: false
-      })
-    );
+    const rayCore = new THREE.LineSegments(rayGeometry, rayCoreMaterial);
     rayGroup.add(rayCore);
     scene.add(rayGroup);
 
@@ -242,6 +240,10 @@
       detector.material.emissiveIntensity = brightness;
       detector.material.color.setScalar(THREE.MathUtils.clamp(0.35 + brightness * 0.22, 0.35, 1.0));
       pointLight.intensity = THREE.MathUtils.clamp(0.8 + power / 45, 0.8, 5.5);
+
+      const powerNormalized = THREE.MathUtils.clamp((power - 25) / (200 - 25), 0, 1);
+      rayMaterial.opacity = THREE.MathUtils.lerp(0.2, 0.58, powerNormalized);
+      rayCoreMaterial.opacity = THREE.MathUtils.lerp(0.08, 0.24, powerNormalized);
 
       powerValue.textContent = power.toFixed(0);
       distanceValue.textContent = r.toFixed(2);
