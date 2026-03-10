@@ -1,267 +1,275 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Inverse-Square Law Light Intensity Simulation</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      font-family: Arial, Helvetica, sans-serif;
-    }
-
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: #000;
-    }
-
-    #ui {
-      position: fixed;
-      top: 16px;
-      left: 16px;
-      width: 300px;
-      background: rgba(10, 18, 35, 0.78);
-      border: 1px solid rgba(120, 200, 255, 0.35);
-      border-radius: 10px;
-      padding: 12px 14px;
-      box-shadow: 0 0 12px rgba(40, 130, 255, 0.25);
-      backdrop-filter: blur(2px);
-      z-index: 10;
-    }
-
-    #ui h1 {
-      margin: 0 0 10px;
-      font-size: 15px;
-      font-weight: 600;
-      color: #9fddff;
-    }
-
-    .control {
-      display: grid;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-
-    label {
-      font-size: 13px;
-      color: #d5eeff;
-    }
-
-    input[type="range"] {
-      width: 100%;
-    }
-
-    #panel {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 13px;
-      line-height: 1.5;
-      color: #dff8ff;
-      background: rgba(0, 0, 0, 0.28);
-      border-radius: 8px;
-      padding: 8px 10px;
-    }
-
-    #equation {
-      margin-top: 8px;
-      font-size: 12px;
-      color: #a4cbff;
-    }
-  </style>
-</head>
-<body>
-  <div id="ui">
-    <h1>Inverse-Square Law: Light Intensity</h1>
-    <div class="control">
-      <label for="distanceSlider">Distance r</label>
-      <input id="distanceSlider" type="range" min="0.5" max="10" step="0.01" value="2" />
-    </div>
-    <div id="panel">
-      <div>r = <span id="distanceValue">2.00</span></div>
-      <div>A = 4πr² = <span id="areaValue">50.27</span></div>
-      <div>I = P/A = <span id="intensityValue">1.9894</span></div>
-    </div>
-    <div id="equation">P = 100 (constant emitted power)</div>
-  </div>
-
-  <script type="module">
-    import * as THREE from 'https://unpkg.com/three@latest/build/three.module.js';
-    import { OrbitControls } from 'https://unpkg.com/three@latest/examples/jsm/controls/OrbitControls.js';
-
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
-
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(6, 4, 6);
-    camera.lookAt(0, 0, 0);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    document.body.appendChild(renderer.domElement);
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.enableZoom = true;
-    controls.enableRotate = true;
-
-    scene.add(new THREE.AmbientLight(0x334455, 0.2));
-
-    const lightSourceGroup = new THREE.Group();
-
-    const emitterSphere = new THREE.Mesh(
-      new THREE.SphereGeometry(0.3, 32, 32),
-      new THREE.MeshStandardMaterial({
-        color: 0xffcc66,
-        emissive: 0xff8800,
-        emissiveIntensity: 2.2,
-        roughness: 0.35,
-        metalness: 0.1
-      })
-    );
-    lightSourceGroup.add(emitterSphere);
-
-    const pointLight = new THREE.PointLight(0xffcc88, 3.0, 60, 2.0);
-    pointLight.position.set(0, 0, 0);
-    lightSourceGroup.add(pointLight);
-
-    const glowSpriteMaterial = new THREE.SpriteMaterial({
-      map: createGlowTexture(),
-      color: 0xffaa55,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      opacity: 0.9
-    });
-    const glowSprite = new THREE.Sprite(glowSpriteMaterial);
-    glowSprite.scale.set(1.8, 1.8, 1);
-    lightSourceGroup.add(glowSprite);
-
-    scene.add(lightSourceGroup);
-
-    const rayGroup = new THREE.Group();
-    const rayCount = 84;
-    const rayLength = 12;
-    const positions = new Float32Array(rayCount * 2 * 3);
-    for (let i = 0; i < rayCount; i += 1) {
-      const dir = randomUnitVector();
-      const base = i * 6;
-      positions[base + 0] = 0;
-      positions[base + 1] = 0;
-      positions[base + 2] = 0;
-      positions[base + 3] = dir.x * rayLength;
-      positions[base + 4] = dir.y * rayLength;
-      positions[base + 5] = dir.z * rayLength;
-    }
-
-    const rayGeometry = new THREE.BufferGeometry();
-    rayGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const rayMaterial = new THREE.LineBasicMaterial({
-      color: 0xffd78a,
-      transparent: true,
-      opacity: 0.32,
-      depthWrite: false
-    });
-    const rays = new THREE.LineSegments(rayGeometry, rayMaterial);
-    rayGroup.add(rays);
-    scene.add(rayGroup);
-
-    const intensityShell = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 64, 64),
-      new THREE.MeshPhongMaterial({
-        color: 0x33d6ff,
-        transparent: true,
-        opacity: 0.25,
-        side: THREE.DoubleSide,
-        depthWrite: false
-      })
-    );
-    scene.add(intensityShell);
-
-    const detector = new THREE.Mesh(
-      new THREE.SphereGeometry(0.12, 24, 24),
-      new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        emissive: 0xffffff,
-        emissiveIntensity: 1.5,
-        roughness: 0.15,
-        metalness: 0.0
-      })
-    );
-    scene.add(detector);
-
-    const shellWire = new THREE.LineSegments(
-      new THREE.WireframeGeometry(new THREE.SphereGeometry(1, 24, 16)),
-      new THREE.LineBasicMaterial({ color: 0x66eeff, transparent: true, opacity: 0.2 })
-    );
-    intensityShell.add(shellWire);
-
-    const slider = document.getElementById('distanceSlider');
-    const distanceValue = document.getElementById('distanceValue');
-    const areaValue = document.getElementById('areaValue');
-    const intensityValue = document.getElementById('intensityValue');
-
-    const P = 100;
-
-    function animate() {
-      requestAnimationFrame(animate);
-
-      const r = Number(slider.value);
-      const area = 4 * Math.PI * r * r;
-      const intensity = P / area;
-
-      intensityShell.scale.setScalar(r);
-      detector.position.set(r, 0, 0);
-
-      const brightness = THREE.MathUtils.clamp(intensity / 1.8, 0.15, 4.5);
-      detector.material.emissiveIntensity = brightness;
-      detector.material.color.setScalar(THREE.MathUtils.clamp(0.35 + brightness * 0.22, 0.35, 1.0));
-
-      distanceValue.textContent = r.toFixed(2);
-      areaValue.textContent = area.toFixed(2);
-      intensityValue.textContent = intensity.toFixed(4);
-
-      controls.update();
-      renderer.render(scene, camera);
-    }
-
-    animate();
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    function randomUnitVector() {
-      const u = Math.random();
-      const v = Math.random();
-      const theta = 2 * Math.PI * u;
-      const phi = Math.acos(2 * v - 1);
-      const sinPhi = Math.sin(phi);
-      return new THREE.Vector3(
-        sinPhi * Math.cos(theta),
-        sinPhi * Math.sin(theta),
-        Math.cos(phi)
-      );
-    }
-
-    function createGlowTexture() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 128;
-      canvas.height = 128;
-      const ctx = canvas.getContext('2d');
-      const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-      gradient.addColorStop(0.0, 'rgba(255,255,220,1)');
-      gradient.addColorStop(0.25, 'rgba(255,200,90,0.75)');
-      gradient.addColorStop(0.55, 'rgba(255,145,30,0.24)');
-      gradient.addColorStop(1.0, 'rgba(255,110,0,0)');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 128, 128);
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.needsUpdate = true;
-      return texture;
-    }
-  </script>
-</body>
-</html>
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>Inverse-Square Law Light Intensity Simulation</title>
++  <style>
++    :root {
++      color-scheme: dark;
++      font-family: Arial, Helvetica, sans-serif;
++    }
+ 
++    body {
++      margin: 0;
++      overflow: hidden;
++      background: #000;
++    }
++
++    #ui {
++      position: fixed;
++      top: 16px;
++      left: 16px;
++      width: 300px;
++      background: rgba(10, 18, 35, 0.78);
++      border: 1px solid rgba(120, 200, 255, 0.35);
++      border-radius: 10px;
++      padding: 12px 14px;
++      box-shadow: 0 0 12px rgba(40, 130, 255, 0.25);
++      backdrop-filter: blur(2px);
++      z-index: 10;
++    }
++
++    #ui h1 {
++      margin: 0 0 10px;
++      font-size: 15px;
++      font-weight: 600;
++      color: #9fddff;
++    }
++
++    .control {
++      display: grid;
++      gap: 6px;
++      margin-bottom: 10px;
++    }
++
++    label {
++      font-size: 13px;
++      color: #d5eeff;
++    }
++
++    input[type="range"] {
++      width: 100%;
++    }
++
++    #panel {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++      font-size: 13px;
++      line-height: 1.5;
++      color: #dff8ff;
++      background: rgba(0, 0, 0, 0.28);
++      border-radius: 8px;
++      padding: 8px 10px;
++    }
++
++    #equation {
++      margin-top: 8px;
++      font-size: 12px;
++      color: #a4cbff;
++    }
++  </style>
++</head>
++<body>
++  <div id="ui">
++    <h1>Inverse-Square Law: Light Intensity</h1>
++    <div class="control">
++      <label for="distanceSlider">Distance r</label>
++      <input id="distanceSlider" type="range" min="0.5" max="10" step="0.01" value="2" />
++    </div>
++    <div id="panel">
++      <div>r = <span id="distanceValue">2.00</span></div>
++      <div>A = 4πr² = <span id="areaValue">50.27</span></div>
++      <div>I = P/A = <span id="intensityValue">1.9894</span></div>
++    </div>
++    <div id="equation">P = 100 (constant emitted power)</div>
++  </div>
++
++  <script type="importmap">
++    {
++      "imports": {
++        "three": "https://unpkg.com/three@latest/build/three.module.js"
++      }
++    }
++  </script>
++
++  <script type="module">
++    import * as THREE from 'three';
++    import { OrbitControls } from 'https://unpkg.com/three@latest/examples/jsm/controls/OrbitControls.js';
++
++    const scene = new THREE.Scene();
++    scene.background = new THREE.Color(0x000000);
++
++    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
++    camera.position.set(6, 4, 6);
++    camera.lookAt(0, 0, 0);
++
++    const renderer = new THREE.WebGLRenderer({ antialias: true });
++    renderer.setSize(window.innerWidth, window.innerHeight);
++    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
++    document.body.appendChild(renderer.domElement);
++
++    const controls = new OrbitControls(camera, renderer.domElement);
++    controls.enableDamping = true;
++    controls.enableZoom = true;
++    controls.enableRotate = true;
++
++    scene.add(new THREE.AmbientLight(0x334455, 0.2));
++
++    const lightSourceGroup = new THREE.Group();
++
++    const emitterSphere = new THREE.Mesh(
++      new THREE.SphereGeometry(0.3, 32, 32),
++      new THREE.MeshStandardMaterial({
++        color: 0xffcc66,
++        emissive: 0xff8800,
++        emissiveIntensity: 2.2,
++        roughness: 0.35,
++        metalness: 0.1
++      })
++    );
++    lightSourceGroup.add(emitterSphere);
++
++    const pointLight = new THREE.PointLight(0xffcc88, 3.0, 60, 2.0);
++    pointLight.position.set(0, 0, 0);
++    lightSourceGroup.add(pointLight);
++
++    const glowSpriteMaterial = new THREE.SpriteMaterial({
++      map: createGlowTexture(),
++      color: 0xffaa55,
++      transparent: true,
++      blending: THREE.AdditiveBlending,
++      depthWrite: false,
++      opacity: 0.9
++    });
++    const glowSprite = new THREE.Sprite(glowSpriteMaterial);
++    glowSprite.scale.set(1.8, 1.8, 1);
++    lightSourceGroup.add(glowSprite);
++
++    scene.add(lightSourceGroup);
++
++    const rayGroup = new THREE.Group();
++    const rayCount = 84;
++    const rayLength = 12;
++    const positions = new Float32Array(rayCount * 2 * 3);
++    for (let i = 0; i < rayCount; i += 1) {
++      const dir = randomUnitVector();
++      const base = i * 6;
++      positions[base + 0] = 0;
++      positions[base + 1] = 0;
++      positions[base + 2] = 0;
++      positions[base + 3] = dir.x * rayLength;
++      positions[base + 4] = dir.y * rayLength;
++      positions[base + 5] = dir.z * rayLength;
++    }
++
++    const rayGeometry = new THREE.BufferGeometry();
++    rayGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
++    const rayMaterial = new THREE.LineBasicMaterial({
++      color: 0xffd78a,
++      transparent: true,
++      opacity: 0.32,
++      depthWrite: false
++    });
++    const rays = new THREE.LineSegments(rayGeometry, rayMaterial);
++    rayGroup.add(rays);
++    scene.add(rayGroup);
++
++    const intensityShell = new THREE.Mesh(
++      new THREE.SphereGeometry(1, 64, 64),
++      new THREE.MeshPhongMaterial({
++        color: 0x33d6ff,
++        transparent: true,
++        opacity: 0.25,
++        side: THREE.DoubleSide,
++        depthWrite: false
++      })
++    );
++    scene.add(intensityShell);
++
++    const detector = new THREE.Mesh(
++      new THREE.SphereGeometry(0.12, 24, 24),
++      new THREE.MeshStandardMaterial({
++        color: 0xffffff,
++        emissive: 0xffffff,
++        emissiveIntensity: 1.5,
++        roughness: 0.15,
++        metalness: 0.0
++      })
++    );
++    scene.add(detector);
++
++    const shellWire = new THREE.LineSegments(
++      new THREE.WireframeGeometry(new THREE.SphereGeometry(1, 24, 16)),
++      new THREE.LineBasicMaterial({ color: 0x66eeff, transparent: true, opacity: 0.2 })
++    );
++    intensityShell.add(shellWire);
++
++    const slider = document.getElementById('distanceSlider');
++    const distanceValue = document.getElementById('distanceValue');
++    const areaValue = document.getElementById('areaValue');
++    const intensityValue = document.getElementById('intensityValue');
++
++    const P = 100;
++
++    function animate() {
++      requestAnimationFrame(animate);
++
++      const r = Number(slider.value);
++      const area = 4 * Math.PI * r * r;
++      const intensity = P / area;
++
++      intensityShell.scale.setScalar(r);
++      detector.position.set(r, 0, 0);
++
++      const brightness = THREE.MathUtils.clamp(intensity / 1.8, 0.15, 4.5);
++      detector.material.emissiveIntensity = brightness;
++      detector.material.color.setScalar(THREE.MathUtils.clamp(0.35 + brightness * 0.22, 0.35, 1.0));
++
++      distanceValue.textContent = r.toFixed(2);
++      areaValue.textContent = area.toFixed(2);
++      intensityValue.textContent = intensity.toFixed(4);
++
++      controls.update();
++      renderer.render(scene, camera);
++    }
++
++    animate();
++
++    window.addEventListener('resize', () => {
++      camera.aspect = window.innerWidth / window.innerHeight;
++      camera.updateProjectionMatrix();
++      renderer.setSize(window.innerWidth, window.innerHeight);
++    });
++
++    function randomUnitVector() {
++      const u = Math.random();
++      const v = Math.random();
++      const theta = 2 * Math.PI * u;
++      const phi = Math.acos(2 * v - 1);
++      const sinPhi = Math.sin(phi);
++      return new THREE.Vector3(
++        sinPhi * Math.cos(theta),
++        sinPhi * Math.sin(theta),
++        Math.cos(phi)
++      );
++    }
++
++    function createGlowTexture() {
++      const canvas = document.createElement('canvas');
++      canvas.width = 128;
++      canvas.height = 128;
++      const ctx = canvas.getContext('2d');
++      const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
++      gradient.addColorStop(0.0, 'rgba(255,255,220,1)');
++      gradient.addColorStop(0.25, 'rgba(255,200,90,0.75)');
++      gradient.addColorStop(0.55, 'rgba(255,145,30,0.24)');
++      gradient.addColorStop(1.0, 'rgba(255,110,0,0)');
++      ctx.fillStyle = gradient;
++      ctx.fillRect(0, 0, 128, 128);
++      const texture = new THREE.CanvasTexture(canvas);
++      texture.needsUpdate = true;
++      return texture;
++    }
++  </script>
++</body>
++</html>
