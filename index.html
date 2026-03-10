@@ -76,12 +76,17 @@
       <label for="distanceSlider">Distance r</label>
       <input id="distanceSlider" type="range" min="0.5" max="10" step="0.01" value="2" />
     </div>
+    <div class="control">
+      <label for="powerSlider">Output power P</label>
+      <input id="powerSlider" type="range" min="25" max="200" step="1" value="100" />
+    </div>
     <div id="panel">
+      <div>P = <span id="powerValue">100</span></div>
       <div>r = <span id="distanceValue">2.00</span></div>
       <div>A = 4πr² = <span id="areaValue">50.27</span></div>
       <div>I = P/A = <span id="intensityValue">1.9894</span></div>
     </div>
-    <div id="equation">P = 100 (constant emitted power)</div>
+    <div id="equation">Vary P and r to compare linear vs inverse-square effects.</div>
   </div>
 
   <script type="importmap">
@@ -167,7 +172,7 @@
     const rayMaterial = new THREE.LineBasicMaterial({
       color: 0xfff1a6,
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.45,
       depthWrite: false
     });
     const rays = new THREE.LineSegments(rayGeometry, rayMaterial);
@@ -178,7 +183,7 @@
       new THREE.LineBasicMaterial({
         color: 0xffffff,
         transparent: true,
-        opacity: 0.33,
+        opacity: 0.18,
         depthWrite: false
       })
     );
@@ -215,27 +220,30 @@
     );
     intensityShell.add(shellWire);
 
-    const slider = document.getElementById('distanceSlider');
+    const distanceSlider = document.getElementById('distanceSlider');
+    const powerSlider = document.getElementById('powerSlider');
+    const powerValue = document.getElementById('powerValue');
     const distanceValue = document.getElementById('distanceValue');
     const areaValue = document.getElementById('areaValue');
     const intensityValue = document.getElementById('intensityValue');
 
-    const P = 100;
-
     function animate() {
       requestAnimationFrame(animate);
 
-      const r = Number(slider.value);
+      const r = Number(distanceSlider.value);
+      const power = Number(powerSlider.value);
       const area = 4 * Math.PI * r * r;
-      const intensity = P / area;
+      const intensity = power / area;
 
       intensityShell.scale.setScalar(r);
       detector.position.set(r, 0, 0);
 
-      const brightness = THREE.MathUtils.clamp(intensity / 1.8, 0.15, 4.5);
+      const brightness = THREE.MathUtils.clamp(intensity / 1.6, 0.12, 4.8);
       detector.material.emissiveIntensity = brightness;
       detector.material.color.setScalar(THREE.MathUtils.clamp(0.35 + brightness * 0.22, 0.35, 1.0));
+      pointLight.intensity = THREE.MathUtils.clamp(0.8 + power / 45, 0.8, 5.5);
 
+      powerValue.textContent = power.toFixed(0);
       distanceValue.textContent = r.toFixed(2);
       areaValue.textContent = area.toFixed(2);
       intensityValue.textContent = intensity.toFixed(4);
