@@ -18,33 +18,33 @@
 
     #ui {
       position: fixed;
-      top: 16px;
-      left: 16px;
-      width: 300px;
+      top: 10px;
+      left: 10px;
+      width: 220px;
       background: rgba(10, 18, 35, 0.78);
       border: 1px solid rgba(120, 200, 255, 0.35);
-      border-radius: 10px;
-      padding: 12px 14px;
-      box-shadow: 0 0 12px rgba(40, 130, 255, 0.25);
-      backdrop-filter: blur(2px);
+      border-radius: 6px;
+      padding: 8px 9px;
+      box-shadow: 0 0 8px rgba(40, 130, 255, 0.18);
+      backdrop-filter: blur(1px);
       z-index: 10;
     }
 
     #ui h1 {
-      margin: 0 0 10px;
-      font-size: 15px;
+      margin: 0 0 6px;
+      font-size: 12px;
       font-weight: 600;
       color: #9fddff;
     }
 
     .control {
       display: grid;
-      gap: 6px;
-      margin-bottom: 10px;
+      gap: 3px;
+      margin-bottom: 6px;
     }
 
     label {
-      font-size: 13px;
+      font-size: 11px;
       color: #d5eeff;
     }
 
@@ -54,17 +54,17 @@
 
     #panel {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 13px;
-      line-height: 1.5;
+      font-size: 11px;
+      line-height: 1.35;
       color: #dff8ff;
       background: rgba(0, 0, 0, 0.28);
-      border-radius: 8px;
-      padding: 8px 10px;
+      border-radius: 6px;
+      padding: 5px 6px;
     }
 
     #equation {
-      margin-top: 8px;
-      font-size: 12px;
+      margin-top: 5px;
+      font-size: 10px;
       color: #a4cbff;
     }
   </style>
@@ -148,7 +148,7 @@
     scene.add(lightSourceGroup);
 
     const rayGroup = new THREE.Group();
-    const rayCount = 84;
+    const rayCount = 260;
     const rayLength = 12;
     const positions = new Float32Array(rayCount * 2 * 3);
     for (let i = 0; i < rayCount; i += 1) {
@@ -165,13 +165,24 @@
     const rayGeometry = new THREE.BufferGeometry();
     rayGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const rayMaterial = new THREE.LineBasicMaterial({
-      color: 0xffd78a,
+      color: 0xfff1a6,
       transparent: true,
-      opacity: 0.32,
+      opacity: 0.75,
       depthWrite: false
     });
     const rays = new THREE.LineSegments(rayGeometry, rayMaterial);
     rayGroup.add(rays);
+
+    const rayCore = new THREE.LineSegments(
+      rayGeometry,
+      new THREE.LineBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.33,
+        depthWrite: false
+      })
+    );
+    rayGroup.add(rayCore);
     scene.add(rayGroup);
 
     const intensityShell = new THREE.Mesh(
